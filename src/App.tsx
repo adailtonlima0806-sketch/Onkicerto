@@ -16,6 +16,37 @@ export default function App() {
   const [activeSection, setActiveSection] = useState('inicio');
   const [currentPage, setCurrentPage] = useState<'home' | 'cases'>('home');
 
+  // Detectar a rota inicial
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/cases') {
+      setCurrentPage('cases');
+      setActiveSection('cases');
+    } else {
+      setCurrentPage('home');
+      // Scroll para a seção baseada na URL
+      const sectionMap: { [key: string]: string } = {
+        '/': 'inicio',
+        '/quem-somos': 'quem-somos',
+        '/o-que-fazemos': 'servicos',
+        '/contato': 'contato',
+      };
+      const section = sectionMap[path] || 'inicio';
+      setActiveSection(section);
+      
+      // Scroll após o loading
+      if (!isLoading && section !== 'inicio') {
+        setTimeout(() => {
+          const element = document.getElementById(section);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      }
+    }
+  }, [isLoading]);
+
+  // Atualizar URL baseado no scroll
   useEffect(() => {
     if (currentPage === 'home') {
       const handleScroll = () => {
@@ -28,6 +59,18 @@ export default function App() {
             const { offsetTop, offsetHeight } = element;
             if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
               setActiveSection(section);
+              
+              // Atualizar URL sem recarregar a página
+              const pathMap: { [key: string]: string } = {
+                'inicio': '/',
+                'quem-somos': '/quem-somos',
+                'servicos': '/o-que-fazemos',
+                'contato': '/contato',
+              };
+              const newPath = pathMap[section];
+              if (window.location.pathname !== newPath) {
+                window.history.pushState({}, '', newPath);
+              }
               break;
             }
           }
@@ -39,12 +82,41 @@ export default function App() {
     }
   }, [currentPage]);
 
+  // Gerenciar navegação do histórico (botão voltar/avançar)
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === '/cases') {
+        setCurrentPage('cases');
+        setActiveSection('cases');
+      } else {
+        setCurrentPage('home');
+        const sectionMap: { [key: string]: string } = {
+          '/': 'inicio',
+          '/quem-somos': 'quem-somos',
+          '/o-que-fazemos': 'servicos',
+          '/contato': 'contato',
+        };
+        const section = sectionMap[path] || 'inicio';
+        const element = document.getElementById(section);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const navigateToPage = (page: 'home' | 'cases') => {
     setCurrentPage(page);
     if (page === 'cases') {
       setActiveSection('cases');
+      window.history.pushState({}, '', '/cases');
     } else {
       setActiveSection('inicio');
+      window.history.pushState({}, '', '/');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
